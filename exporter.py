@@ -144,6 +144,7 @@ if __name__ == "__main__":
         if os.path.exists(files_info_path):
             pre_folder_info = FolderInfo.from_json(files_info_path)
             root_folder_info.compare(pre_folder_info)
+            root_folder_info.filter_empty_folders()
 
         root_folder_info.save_json(files_info_path)
         shutil.copyfile(files_info_path, os.path.join(export_path, 'files_info.json'))

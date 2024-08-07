@@ -91,6 +91,17 @@ class FolderInfo:
         for k, v in self.files_info.items():
             if k in pre_folder_info.files_info and v.status != ShimoStatus.DELETE:
                 self.files_info[k].compare(pre_folder_info.files_info[k])
+    
+    def filter_empty_folders(self):
+        filter_k = []
+        for k, v in self.sub_folders.items():
+            if v.filter_empty_folders():
+                filter_k.append(k)
+        for k in filter_k:
+            self.sub_folders.pop(k)
+        if len(self.files_info) + len (self.sub_folders) == 0:
+            return True
+        return False
 
     def print_diff(self, log_file, depth:int=0):
         for k, v in sorted(self.sub_folders.items()):
