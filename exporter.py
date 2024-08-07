@@ -5,8 +5,10 @@ import json
 import os
 import re
 import sys
-from datetime import datetime
+from datetime import datetime, date
 import time
+import shutil
+from shimo_file_info import FolderInfo, ShimoInfo, ShimoStatus
 
 # 读取配置文件
 with open('config.json', 'r', encoding='utf-8') as f:
@@ -25,7 +27,7 @@ desktop_headers_options = {
 }
 
 
-async def get_file_list(folder='', base_path=''):
+async def get_file_list(folder_info, folder='', base_path=''):
     try:
         params_options = {'collaboratorCount': 'true', 'folder': folder} if folder else {'collaboratorCount': 'true'}
         headers = headers_options if folder else desktop_headers_options
@@ -54,12 +56,17 @@ async def get_file_list(folder='', base_path=''):
 
                     if res != 0:
                         print(f'[Error] Failed to export: {item["name"]}')
+                    else:
+                        folder_info.files_info[item['name']] = ShimoInfo(item['updatedAt'], False)
                 else:
                     if config['Recursive']:
-                        await get_file_list(item['guid'], os.path.join(base_path, item['name']))
+                        sub_folder_info = FolderInfo()
+                        sub_folder_info.folder_info = ShimoInfo(item['updatedAt'], True)
+                        folder_info.sub_folders[item['name']] = sub_folder_info
+                        await get_file_list(sub_folder_info, item['guid'], os.path.join(base_path, item['name']))
             else:
                 print('the end')
-                sys.exit()
+                return
     except Exception as error:
         print(f'[Error] {str(error)}')
 
@@ -126,5 +133,29 @@ def replace_bad_char(file_name):
     return file_name
 
 
-loop = asyncio.get_event_loop()
-loop.run_until_complete(get_file_list(config['Folder'], config['Path']))
+if __name__ == "__main__":
+    root_folder_info = FolderInfo()
+    loop = asyncio.get_event_loop()
+    export_path = os.path.join(config['Path'], 'Export')
+    loop.run_until_complete(get_file_list(root_folder_info, config['Folder'], export_path))
+
+    if os.path.exists(export_path):
+        files_info_path = os.path.join(config['Path'], 'files_info.json')
+        if os.path.exists(files_info_path):
+            pre_folder_info = FolderInfo.from_json(files_info_path)
+            root_folder_info.compare(pre_folder_info)
+
+        root_folder_info.save_json(files_info_path)
+        shutil.copyfile(files_info_path, os.path.join(export_path, 'files_info.json'))
+        with open(os.path.join(export_path, 'diff.log'), 'w', encoding='utf-8') as f:
+            root_folder_info.print_diff(f)
+
+        today = str(date.today()).replace('-', '')
+        today_dir = os.path.join(config['Path'], today)
+        if os.path.exists(today_dir):
+            i = 1
+            while os.path.exists(today_dir + f'_{i}'):
+                i += 1
+            today_dir = today_dir + f'_{i}'
+        shutil.move(export_path, today_dir)
+        print(f'[Done] Exported to {today_dir}')
