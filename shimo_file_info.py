@@ -74,23 +74,23 @@ class FolderInfo:
         else:
             self.folder_info.status = ShimoStatus.SAME
 
+        for k, v in self.sub_folders.items():
+            if k in pre_folder_info.sub_folders and pre_folder_info.sub_folders[k].folder_info.status != ShimoStatus.DELETE:
+                self.sub_folders[k].compare(pre_folder_info.sub_folders[k])
         for k, v in pre_folder_info.sub_folders.items():
             if not k in self.sub_folders and v.folder_info.status != ShimoStatus.DELETE:
                 sub_folder_info = FolderInfo()
                 sub_folder_info.folder_info.updated_time = v.folder_info.updated_time
                 sub_folder_info.folder_info.status = ShimoStatus.DELETE
                 self.sub_folders[k] = sub_folder_info
-        for k, v in self.sub_folders.items():
-            if k in pre_folder_info.sub_folders and v.folder_info.status != ShimoStatus.DELETE:
-                self.sub_folders[k].compare(pre_folder_info.sub_folders[k])
 
+        for k, v in self.files_info.items():
+            if k in pre_folder_info.files_info and pre_folder_info.files_info[k].status != ShimoStatus.DELETE:
+                self.files_info[k].compare(pre_folder_info.files_info[k])
         for k, v in pre_folder_info.files_info.items():
             if not k in self.files_info and v.status != ShimoStatus.DELETE:
                 file_info = ShimoInfo(v.updated_time, False, str(ShimoStatus.DELETE))
                 self.files_info[k] = file_info
-        for k, v in self.files_info.items():
-            if k in pre_folder_info.files_info and v.status != ShimoStatus.DELETE:
-                self.files_info[k].compare(pre_folder_info.files_info[k])
     
     def filter_empty_folders(self):
         filter_k = []
